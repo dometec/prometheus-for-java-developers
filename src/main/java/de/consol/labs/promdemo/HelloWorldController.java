@@ -1,5 +1,7 @@
 package de.consol.labs.promdemo;
 
+import com.codahale.metrics.ConsoleReporter;
+import com.codahale.metrics.MetricRegistry;
 import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.Counter;
 import io.prometheus.client.exporter.common.TextFormat;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.Collection;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Controller
@@ -31,10 +34,14 @@ public class HelloWorldController {
             .register();
     private final CounterService springRequestsTotal;
     private final AtomicInteger jmxRequestsTotal = new AtomicInteger();
+    private final com.codahale.metrics.Counter dwRequestsTotal;
 
     public HelloWorldController(@Autowired Collection<PublicMetrics> publicMetrics, @Autowired CounterService sprintRequestsTotal) {
         this.springRequestsTotal = sprintRequestsTotal;
         new SpringBootMetricsCollector(publicMetrics).register();
+        MetricRegistry dropwizardRegistry = new MetricRegistry();
+        dwRequestsTotal = dropwizardRegistry.counter("dropwizard_requests_total");
+        ConsoleReporter.forRegistry(dropwizardRegistry).build().start(5, TimeUnit.SECONDS);
     }
 
     @RequestMapping(path = "/hello-world")
@@ -42,6 +49,7 @@ public class HelloWorldController {
         promRequestsTotal.inc();
         springRequestsTotal.increment("counter.calls.promdemo.hello_world");
         jmxRequestsTotal.incrementAndGet();
+        dwRequestsTotal.inc();
         return "hello, world";
     }
 
