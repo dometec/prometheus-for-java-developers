@@ -3,7 +3,9 @@ package de.consol.labs.promdemo;
 import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.Counter;
 import io.prometheus.client.exporter.common.TextFormat;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.actuate.metrics.CounterService;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,10 +22,16 @@ public class HelloWorldController {
             .name("requests_total")
             .help("Total number of requests.")
             .register();
+    private final CounterService springRequestsTotal;
+
+    public HelloWorldController(@Autowired CounterService sprintRequestsTotal) {
+        this.springRequestsTotal = sprintRequestsTotal;
+    }
 
     @RequestMapping(path = "/hello-world")
     public @ResponseBody String sayHello() {
         promRequestsTotal.inc();
+        springRequestsTotal.increment("counter.calls.promdemo.hello_world");
         return "hello, world";
     }
 
