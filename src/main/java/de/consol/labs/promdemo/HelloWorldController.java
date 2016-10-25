@@ -9,6 +9,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.actuate.endpoint.PublicMetrics;
 import org.springframework.boot.actuate.metrics.CounterService;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.jmx.export.annotation.ManagedAttribute;
+import org.springframework.jmx.export.annotation.ManagedResource;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -16,9 +18,11 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Controller
 @SpringBootApplication
+@ManagedResource(objectName="de.consol.labs:name=PromDemoBean")
 public class HelloWorldController {
 
     private final Counter promRequestsTotal = Counter.build()
@@ -26,6 +30,7 @@ public class HelloWorldController {
             .help("Total number of requests.")
             .register();
     private final CounterService springRequestsTotal;
+    private final AtomicInteger jmxRequestsTotal = new AtomicInteger();
 
     public HelloWorldController(@Autowired Collection<PublicMetrics> publicMetrics, @Autowired CounterService sprintRequestsTotal) {
         this.springRequestsTotal = sprintRequestsTotal;
@@ -36,6 +41,7 @@ public class HelloWorldController {
     public @ResponseBody String sayHello() {
         promRequestsTotal.inc();
         springRequestsTotal.increment("counter.calls.promdemo.hello_world");
+        jmxRequestsTotal.incrementAndGet();
         return "hello, world";
     }
 
@@ -43,6 +49,11 @@ public class HelloWorldController {
     public void metrics(Writer responseWriter) throws IOException {
         TextFormat.write004(responseWriter, CollectorRegistry.defaultRegistry.metricFamilySamples());
         responseWriter.close();
+    }
+
+    @ManagedAttribute(description="jmx_requests_total")
+    public int getJmxRequestsTotal() {
+        return jmxRequestsTotal.get();
     }
 
     public static void main(String[] args) {
